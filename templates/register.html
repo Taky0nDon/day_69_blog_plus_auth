@@ -29,7 +29,6 @@ include "header.html" %}
             {% endfor %}
           {% endif %}
         {% endwith %}
-        <!--TODO: render your registration form here-->
         {{ render_form(reg_form, novalidate=True, button_map={"submit": "primary"}) }}
       </div>
     </div>

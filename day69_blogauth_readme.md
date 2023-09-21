@@ -67,4 +67,49 @@ class User(db.Model, UserMixin):
 ```
 
 ## Recreate the database with the old data
+jk, not now.
 
+## Save comments
+
+* Create a new table called Comment with `id` and `text` columns.
+* Establish a One-to-Many relationship between `User`(parent) and `Comment`(child)
+
+### More many-to-one examples:
+```python
+class BlogPost(db.Model):  
+	author = relationship("User", back_populates="posts")  
+	post_comments = relationship("Comment", back_populates="parent_post")  
+	  
+	__tablename__ = "blog_post"  
+	id = db.Column(db.Integer, primary_key=True)  
+	author_id = db.Column(db.Integer, db.ForeignKey("user.id"))  
+	title = db.Column(db.String(250), unique=True, nullable=False)  
+	subtitle = db.Column(db.String(250), nullable=False)  
+	date = db.Column(db.String(250), nullable=False)  
+	body = db.Column(db.Text, nullable=False)  
+	img_url = db.Column(db.String(250), nullable=False)  
+  
+  
+class User(db.Model, UserMixin):  
+	posts = relationship("BlogPost", back_populates="author")  
+	comments = relationship("Comment", back_populates="author")  
+	  
+	__tablename__ = "user"  
+	id = db.Column(db.Integer, primary_key=True)  
+	name = db.Column(db.String, nullable=False)  
+	email = db.Column(db.String, nullable=False, unique=True)  
+	password_hash = db.Column(db.String, nullable=False)  
+  
+  
+class Comment(db.Model):  
+	author = relationship("User", back_populates="comments")  
+	parent_post = relationship("BlogPost", back_populates="post_comments")  
+	  
+	__tablename__ = "comment"  
+	id = db.Column(db.Integer, primary_key=True)  
+	author_id = db.Column(db.Integer, db.ForeignKey("user.id"))  
+	parent_post_id = db.Column(db.Integer, db.ForeignKey("blog_post.id"))  
+	text = db.Column(db.String, nullable=False)
+```
+
+## Gravatar

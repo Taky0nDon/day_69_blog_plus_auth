@@ -10,7 +10,7 @@ from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship
 # Import your forms from the forms.py
-from forms import CreatePostForm, RegisterForm, LoginForm
+from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
 
 
 
@@ -19,8 +19,11 @@ app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
 app.config['SQLALCHEMY_ECHO'] = True
 ckeditor = CKEditor(app)
 Bootstrap5(app)
+gravatar = Gravatar(app,
+                    size=100,
+                    rating='g',
+                    default='retro')
 
-# TODO: Configure Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
 
@@ -48,8 +51,9 @@ db.init_app(app)
 # CONFIGURE TABLES
 class BlogPost(db.Model):
     author = relationship("User", back_populates="posts")
+    post_comments = relationship("Comment", back_populates="parent_post")
 
-    __tablename__ = "blog_posts"
+    __tablename__ = "blog_post"
     id = db.Column(db.Integer, primary_key=True)
     author_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     title = db.Column(db.String(250), unique=True, nullable=False)
@@ -61,12 +65,24 @@ class BlogPost(db.Model):
 
 class User(db.Model, UserMixin):
     posts = relationship("BlogPost", back_populates="author")
+    comments = relationship("Comment", back_populates="author")
 
     __tablename__ = "user"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
     email = db.Column(db.String, nullable=False, unique=True)
     password_hash = db.Column(db.String, nullable=False)
+
+
+class Comment(db.Model):
+    author = relationship("User", back_populates="comments")
+    parent_post = relationship("BlogPost", back_populates="post_comments")
+
+    __tablename__ = "comment"
+    id = db.Column(db.Integer, primary_key=True)
+    author_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    parent_post_id = db.Column(db.Integer, db.ForeignKey("blog_post.id"))
+    text = db.Column(db.String, nullable=False)
 
 
 with app.app_context():
@@ -109,7 +125,6 @@ def login():
             flash("Incorrect password!")
         else:
             login_user(user)
-            print(current_user.posts[0].body)
             return redirect(url_for('get_all_posts'))
     return render_template("login.html", form=login_form)
 
@@ -128,10 +143,26 @@ def get_all_posts():
 
 
 # TODO: Allow logged-in users to comment on posts
-@app.route("/post/<int:post_id>")
+@app.route("/post/<int:post_id>", methods=["GET", "POST"])
 def show_post(post_id):
     requested_post = db.get_or_404(BlogPost, post_id)
-    return render_template("post.html", post=requested_post)
+    comment_form = CommentForm()
+    comments = db.session.execute(db.select(Comment).where(Comment.parent_post_id == requested_post.id)).scalars()
+    if comment_form.validate_on_submit():
+        if current_user.is_anonymous:
+            flash("You must log in to post comments.")
+            return redirect(url_for('login'))
+        comment_text = comment_form.body.data
+        new_comment = Comment(
+            author=current_user,
+            parent_post=requested_post,
+            author_id=current_user.id,
+            text=comment_text,
+        )
+        db.session.add(new_comment)
+        db.session.commit()
+
+    return render_template("post.html", post=requested_post, comment=comment_form, comments=comments)
 
 
 @app.route("/new-post", methods=["GET", "POST"])
