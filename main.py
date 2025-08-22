@@ -1,4 +1,5 @@
 import os
+from secrets import token_bytes
 from datetime import date
 from flask import Flask, abort, render_template, redirect, url_for, flash
 from flask_bootstrap import Bootstrap5
@@ -13,10 +14,10 @@ from sqlalchemy.orm import relationship
 # Import your forms from the forms.py
 from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
 
-
+print(os.environ)
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('FLASK_KEY')
+app.config['SECRET_KEY'] = token_bytes()
 app.config['SQLALCHEMY_ECHO'] = True
 ckeditor = CKEditor(app)
 Bootstrap5(app)
@@ -44,8 +45,8 @@ def load_user(user_id):
     return db.session.get(User, user_id)
 
 # CONNECT TO DB
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DB_URI')
 db = SQLAlchemy()
+app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///posts.db"
 db.init_app(app)
 
 
